@@ -1,0 +1,154 @@
+---
+title: "Puoluedata"
+output: html_notebook
+---
+
+Analysoidaan vuoden 2007 äänestystuloksia (Ainoat täydet setit jotka saatavilla).
+
+```{r}
+
+library(dplyr)
+library(ggplot2)
+library(stringr)
+
+```
+
+
+
+Analyze data
+
+```{r}
+
+fullData <- as_tibble(read.csv("CleanData.csv"))
+
+
+
+```
+
+
+
+Plot data
+
+```{r}
+
+g1 <- ggplot(fullData %>% filter(RANK<=minListSize,LISTPASSED>0))+
+  geom_jitter(aes(x=RANK,y=N.REL,group=interaction(YEAR,PARTY,PROVINCE)),col="black",size=1)+
+  scale_x_continuous(breaks=seq(0,minListSize,2))+
+  scale_y_continuous(breaks=seq(0,1,0.2))+
+  geom_smooth(aes(x=RANK,y=N.REL),col="red")+
+  geom_hline(yintercept = c(0.1,0.5),col="blue")+
+  ggtitle("Listalta ainakin yksi kansanedustaja")
+
+plot(g1)
+
+
+
+
+```
+
+
+```{r}
+g2 <- ggplot(fullData %>% filter(RANK<=5,LISTPASSED>0))+
+  geom_line(aes(x=RANK,y=N.REL,group=interaction(YEAR,PARTY,PROVINCE),col=PARTY),size=0.5,alpha=0.4)+
+  scale_x_continuous(breaks=seq(0,12,1))+
+  scale_y_continuous(breaks=seq(0,1,0.2))+
+  geom_smooth(aes(x=RANK,y=N.REL),col="red")+
+  theme(legend.position="none")+
+  ggtitle("Ainakin yksi kansanedustaja, puolueet värikoodattu")
+
+plot(g2)
+```
+
+
+```{r}
+
+
+closeup <- fullData %>% filter(RANK.REL<=0.5, LISTPASSED > 0)
+
+g3 <- ggplot(closeup)+
+  geom_line(data=closeup %>% filter(LISTPASSED == 1), aes(x=RANK.REL,y=N.REL,group=interaction(YEAR,PARTY,PROVINCE)),col="blue",size=0.5,alpha=0.4)+
+    geom_smooth(data=closeup %>% filter(LISTPASSED == 1), aes(x=RANK.REL,y=N.REL),col="blue",size=2)+
+  geom_line(data=closeup %>% filter(LISTPASSED > 1 & LISTPASSED <4), aes(x=RANK.REL,y=N.REL,group=interaction(YEAR,PARTY,PROVINCE)),col="red",size=0.5,alpha=0.4)+
+      geom_smooth(data=closeup %>% filter(LISTPASSED > 1 & LISTPASSED <4), aes(x=RANK.REL,y=N.REL),col="red",size=2)+
+  scale_x_continuous(breaks=seq(0,1,0.1))+
+  scale_y_continuous(breaks=seq(0,1,0.2))+
+#  scale_color_continuous(low="blue",high="red")+
+ # geom_smooth(aes(x=RANK,y=N.REL),col="red")+
+  theme(legend.position="none")+
+  geom_hline(yintercept = c(0.1,0.5),col="black")+
+  ggtitle("Listalta 1 kansanedustaja (sin) tai 2-3 (pun)")
+
+
+plot(g3)
+
+
+
+```
+
+```{r}
+g4 <- ggplot(fullData %>% filter(RANK.REL<=1,LISTPASSED>0))+
+  geom_jitter(aes(x=RANK.REL,y=N.REL,group=interaction(YEAR,PARTY,PROVINCE)),col="darkgray",size=1)+
+  scale_x_continuous(breaks=seq(0,minListSize,0.1))+
+  scale_y_continuous(breaks=seq(0,1,0.2))+
+  geom_smooth(aes(x=RANK.REL,y=N.REL),col="red")+
+  geom_hline(yintercept = c(0.1,0.5),col="blue")+
+  ggtitle("2007 vaalit, listalta ainakin yksi kansanedustaja")
+
+plot(g4)
+
+```
+
+
+```{r}
+closeup <- fullData %>% filter(RANK.REL<=0.33, LISTPASSED > 0)
+
+lowerLimit <- 0.1
+midLimit <- 0.10
+upperLimit <- 0.20
+
+g5 <- ggplot(closeup)+
+  geom_line(data=closeup %>% filter(PASSED.REL < lowerLimit), aes(x=RANK.REL,y=N.REL,group=interaction(YEAR,PARTY,PROVINCE)),col="blue",size=0.5,alpha=0.4)+
+  
+    geom_smooth(data=closeup %>% filter(PASSED.REL < lowerLimit), aes(x=RANK.REL,y=N.REL),col="blue",size=2)+
+  
+  geom_line(data=closeup %>% filter(PASSED.REL > midLimit & PASSED.REL <= upperLimit), aes(x=RANK.REL,y=N.REL,group=interaction(PARTY,PROVINCE)),col="red",size=0.5,alpha=0.4)+
+  
+      geom_smooth(data=closeup %>% filter(PASSED.REL > midLimit & PASSED.REL <= upperLimit),aes(x=RANK.REL,y=N.REL), col="red",size=2)+
+  
+  scale_x_continuous(breaks=seq(0,1,0.1))+
+  scale_y_continuous(breaks=seq(0,1,0.2))+
+#  scale_color_continuous(low="blue",high="red")+
+ # geom_smooth(aes(x=RANK,y=N.REL),col="red")+
+  theme(legend.position="none")+
+  geom_hline(yintercept = c(0.1,0.5),col="black")+
+  ggtitle("Listasta läpi < 10% (sin) tai 10-20% (pun)")
+
+
+plot(g5)
+```
+
+
+
+```{r}
+VS15 <- filter(fullData,YEAR==2015 & PROVINCE=="VAR")
+
+g10 <- ggplot(VS15)+
+  geom_line(aes(x=RANK,y=N,group=PARTY,col=PARTY),size=1.5,alpha=0.4)+
+    geom_point(aes(x=RANK,y=N,group=PARTY,col=PARTY),size=2,alpha=0.4)+
+#  scale_x_continuous(breaks=seq(0,12,1))+
+#  scale_y_continuous(breaks=seq(0,1,0.2))+
+#  geom_smooth(aes(x=RANK,y=N),col="red")+
+ # theme(legend.position="none")+
+  geom_hline(yintercept=14000)+
+  ggtitle("Varsinais-Suomi 2015")
+
+plot(g10)
+```
+
+
+
+```{r}
+#Usually not needed
+if (F) { sessionInfo() }
+```
+
