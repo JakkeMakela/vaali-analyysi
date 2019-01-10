@@ -153,7 +153,7 @@ plot(g10)
 
 
 
-```{r}
+```{r} 
 #Usually not needed
 if (F) { sessionInfo() }
 ```
