@@ -4,6 +4,8 @@ library(ggplot2)
 library(stringr)
 library(XLConnect)
 
+dataDir <- "RawData"
+
 minListSize <- 10
 
 ###LÃ¤hde: http://tilastokeskus.fi/til/evaa/tau.html
@@ -62,35 +64,35 @@ wrangleData2007 <- function(){
   partyName2007 <- c("KESK - CENT",
                      "KOK - SAML", 
                      "SDP",
-                     "VAS - VÃ„NST - LEFT",
-                     "VIHR - GRÃ–NA - GREENS",
+                     "VAS - VÃÄNST - LEFT",
+                     "VIHR - GRÖNA - GREENS",
                      "KD",
                      "RKP - SFP",
                      "PS - SAF")
   
   
   province2007 <- c("HELSINKI - HELSINGFORS",
-                    "UUSIMAA - NYLAND",
+                    "UUSIMAA  - NYLAND",
                     "VARSINAIS-SUOMI - EGENTLIGA FINLAND",
                     "SATAKUNTA",
-                    "HÃ„ME - TAVASTLAND",
+                    "HÄME - TAVASTLAND",
                     "PIRKANMAA - BIRKALAND",
                     "KYMI - KYMMENE",
-                    "ETELÃ„-SAVO - SÃ–DRA SAVOLAX - SOUTH SAVO",
+                    "ETELÄ-SAVO - SÖDRA SAVOLAX - SOUTH SAVO",
                     "POHJOIS-SAVO - NORRA SAVOLAX - NORTH SAVO",
                     "POHJOIS-KARJALA - NORRA KARELEN - NORTH KARELIA",
                     "VAASA - VASA",
                     "KESKI-SUOMI - MELLERSTA FINLAND - CENTRAL FINLAND",
-                    "OULU - ULEÃ…BORG",
+                    "OULU - ULEÅBORG",
                     "LAPPI - LAPPLAND - LAPLAND")
   
-  provinceCode2007 <- c("HEL","UUS","VAR","SAT","HÃ„M","PIR",
+  provinceCode2007 <- c("HEL","UUS","VAR","SAT","HAM","PIR",
                         "KYM","ESA","PSA","PKA","VAA","KES",
                         "OUL","LAP")
   
   #Luetaan vain kerran
   
-  wb <- loadWorkbook("evaa_2007_2007-03-28_tau_015.xls")
+  wb <- loadWorkbook(paste0(dataDir,"/evaa_2007_2007-03-28_tau_015.xls"))
   rawdata <- as_tibble(readWorksheet(wb,1,startRow=10))
   
   
@@ -99,26 +101,26 @@ wrangleData2007 <- function(){
     mutate(NAME=str_trim(NAME))
   rawdata$YEAR <- 2007
   
-  #2007 data has weird mixture of chr(32) and chr(160) for spaces. This solution screws up names, but makes provinces OK
+  #2007 data has weird mixture of chr(32) and chr(160) for spaces. Careful with provinces!
   rawdata$NAME <- rawdata$NAME %>% 
-    str_replace_all(intToUtf8(160),"") %>%
-    str_replace_all(intToUtf8(32),"")
+    str_replace_all(intToUtf8(160),intToUtf8(32)) 
+  
   
   #Strip the data from the provinces
-  provinceStripped <- province2007 %>% 
-    str_replace_all(intToUtf8(32),"")
+  #provinceStripped <- province2007 %>% 
+  #  str_replace_all(intToUtf8(32),"")
   
   
   
   rawdata$PROVINCENUM <- NA
   maxInd <- nrow(rawdata)
-  provinceInd <- which(rawdata$NAME %in% provinceStripped)
+  provinceInd <- which(rawdata$NAME %in% province2007)
   for (ind in 1:length(provinceInd)){
     rawdata$PROVINCENUM[provinceInd[ind]:maxInd] <- ind
   }
+  
   rawdata <- rawdata %>% 
     mutate(PROVINCE = provinceCode2007[PROVINCENUM])
-  
   
   
   #Find where group changes
@@ -141,30 +143,31 @@ wrangleData2007 <- function(){
   rawdata <- rawdata %>% 
     filter(N != "") %>%
     mutate(N = str_replace(N,fixed(" "),"")) %>%
-    mutate(N = str_replace(N,intToUtf8(160),"")) %>%
-    mutate(N=as.numeric(N),PASSED=str_detect(NAME,fixed("*")))
+    mutate(N=as.numeric(N),PASSED=str_detect(NAME,fixed("*"))) %>%
+    mutate(NAME=str_remove_all(NAME,fixed("*")))
   
   #Clean unnecessary columns
   rawdata <- rawdata %>%
     mutate(PROVINCENUM=NULL, GROUPNUM=NULL, GROUPNAME=NULL)
-
+  
   rawdata <- rawdata %>%
     arrange(YEAR,PROVINCE,PARTY,desc(N)) 
-    
+  
   as_tibble(rawdata)
 }
 
 
 wrangleData2015 <- function(){
   
-  partyName2015 <- c("KESK",
+  
+  partyName2015 <- c("KESK", 
                      "KOK", 
                      "SDP",
-                     "VAS",
-                     "VIHR",
-                     "KD",
-                     "RKP",
-                     "PS")
+                     "VAS", 
+                     "VIHR", 
+                     "KD", 
+                     "RKP", 
+                     "PS") 
   
   partyRecode2015 <- c(KESK="KE",
                        KOK="KO", 
@@ -175,32 +178,59 @@ wrangleData2015 <- function(){
                        RKP="RK",
                        PS="PS")
   
-  data <- as_tibble(read.csv("VS2015.csv")) %>% 
-    filter(Puolue %in% vsPuolueet) %>%
-    rename(NAME=Ehdokas,
-           N=Ã„Ã¤nimÃ¤Ã¤rÃ¤,
-           DHONDT=Vertailuluku,
-           PARTY=Puolue) %>%
-    mutate(YEAR=2015,
-           PROVINCE="VAR", 
-           PASSED=str_detect(NAME,fixed("VALITTU")),
-           PARTY=recode(PARTY,!!!partyRecode2015)) %>%
-    filter(is.na(PARTY)==FALSE) 
+  provinceRecode2015 <- c("Helsingin vaalipiiri"="HEL",
+                          "Uudenmaan vaalipiiri"="UUS",
+                          "Varsinais-Suomen vaalipiiri"="VAR",
+                          "Satakunnan vaalipiiri"="SAT",
+                          "Hämeen vaalipiiri"="HAM",
+                          "Pirkanmaan vaalipiiri"="PIR",
+                          "Kaakkois-Suomen vaalipiiri"="KAA",
+                          "Savo-Karjalan vaalipiiri"="SAV",
+                          "Vaasan vaalipiiri"="VAA",
+                          "Keski-Suomen vaalipiiri"="KES",
+                          "Oulun vaalipiiri"="OUL",
+                          "Lapin vaalipiiri"="LAP")
+  
+  provinceCode2015 <- c("HEL","UUS","VAR","SAT","HAM","PIR",
+                        "KAA", "SAV", "VAA","KES", "OUL","LAP")
+  
+  data <- as_tibble(read.csv2(paste0(dataDir,"/2015_150_evaa_105.csv"),skip=1))
+  
+  
+  slashLoc <- unlist(str_locate_all(data$Ehdokas,"/"))
+  nameEnd <- slashLoc[seq(1,length(slashLoc),4)]-2
+  partyStart <- slashLoc[seq(1,length(slashLoc),4)]+2
+  partyEnd <- slashLoc[seq(2,length(slashLoc),4)]-2
+  provinceStart <- slashLoc[seq(2,length(slashLoc),4)]+2
   
   data <- data %>%
-    arrange(YEAR,PROVINCE,PARTY,desc(N)) 
-    
-    
-    
+    mutate(YEAR=2015) %>%
+    rename(N=Äänimäärä,
+           DHONDT=Vertausluku) %>%
+    mutate(NAME=substr(Ehdokas,1,nameEnd),
+           PartyName = substr(Ehdokas,partyStart,partyEnd),
+           ProvinceName = substr(Ehdokas,provinceStart,length(Ehdokas))) %>%
+    filter(PartyName %in% partyName2015) %>%
+    mutate(PARTY=recode(PartyName,!!!partyRecode2015),
+           PROVINCE=recode(ProvinceName,!!!provinceRecode2015),
+           PASSED=(Valintatieto==1)) %>%
+    mutate(Ehdokas=NULL,PartyName=NULL,ProvinceName=NULL,
+           Valintatieto=NULL) %>%
+    arrange(YEAR,PROVINCE,PARTY,desc(N))  
 }
 
-data2015 <- as_tibble(wrangleData2015())
-data2007 <- as_tibble(wrangleData2007())
 
-alldata <- as_tibble(rbind(data2007,data2015))
-cleandata <- cleanData(alldata)
 
-write.csv(cleandata,file="CleanData.csv")
 
+if (T){
+  data2007 <- as_tibble(wrangleData2007())
+  data2015 <- as_tibble(wrangleData2015())
+  
+  
+  alldata <- as_tibble(rbind(data2007,data2015))
+  cleandata <- cleanData(alldata)
+  
+  write.csv(cleandata,file="CleanData.csv")
+}
 
 
