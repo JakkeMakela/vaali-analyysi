@@ -1,9 +1,12 @@
 ---
-title: "Puoluedata"
+title: "Eduskuntavaalien listojen jakaumia"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 ---
+
+Tässä dokumentissa analysoidaan eduskuntavaalien ehdokkaiden saamia äänimääriä. Tarkoituksena on arvioida, noudattavatko äänimäärät suunnilleen eksponenttijakaumaa.
 
 Analysoidaan vuoden 2007 ja 2015 äänestystuloksia (Ainoat täydet setit jotka saatavilla).
 
@@ -33,7 +36,9 @@ fullData <- as_tibble(read.csv("CleanData.csv"))
 
 
 
-Plot data
+# Suhteelliset osuudet
+
+Plotataan kaikkien vaalipiirien kaikkien listojen edustajien äänimäärät niin, että eniten ääniä saaneen ehdokkaan suhteelliseksi äänimääräksi normitetaan 1. Nähdään, että eksponenttijakauma ei ole ainakaan huono arvio.
 
 ```{r}
 
@@ -53,6 +58,11 @@ plot(g1)
 ```
 
 
+#Puolueittain
+
+Koitetaan arvioida, onko eri puolueilla systemaattisesti erilaisia jakaumia (ts onko jokin puolue systemaattisesti liikkeellä yhdellä kärkiehdokkaalla). Systemaattista eroa ei ainakaan silmin pysty näkemään.
+
+
 ```{r}
 g2 <- ggplot(fullData %>% filter(RANK<=5,LISTPASSED>0))+
   geom_line(aes(x=RANK,y=N.REL,group=interaction(YEAR,PARTY,PROVINCE),col=PARTY),size=0.5,alpha=0.4)+
@@ -64,6 +74,13 @@ g2 <- ggplot(fullData %>% filter(RANK<=5,LISTPASSED>0))+
 
 plot(g2)
 ```
+
+#Normitettu data: Yksi vs useampi edustaja
+
+Arvioidaan, onko usean läpipäässeen ehdokkaan listoilla myös vähemmän saaneiden ehdokkaiden jakauma tasaisempi. Listojen koot ovat eri puolilla maata eri pituisia, joten ehdokkaan sijainti listalla kannattaa normittaa listan pituuteen. 
+
+Tällöin nähdään, että ei ole juurikaan eroa, onko listalla ollut yksi läpimenijä vai useampia.
+
 
 
 ```{r}
@@ -91,6 +108,13 @@ plot(g3)
 
 ```
 
+
+
+#Normitettu data
+
+Kun normitetaan sekä sijainti listalla että suhteellinen äänimäärä, nähdään erittäin systemaattinen tulos. Listan suosituin 10% saa lähes aina noin puolet kaikista listan äänistä. Listan viimeisessä kolmannekksessa äänimäärät ovat käytännössä aina alle 10% kärkiehdokkaan äänistä.
+
+
 ```{r}
 g4 <- ggplot(fullData %>% filter(RANK.REL<=1,LISTPASSED>0))+
   geom_jitter(aes(x=RANK.REL,y=N.REL,group=interaction(YEAR,PARTY,PROVINCE)),col="darkgray",size=1)+
@@ -104,6 +128,10 @@ plot(g4)
 
 ```
 
+#Normitettu tulos: useita ehdokkaita vai yksi ehdokas? 
+
+
+Jos plotataan erikseen tapaukset, joissa listalta pääsi läpi alle ja yli 10% listalla olijoista, ei nähdä käytännössä merkittävää eroa.
 
 ```{r}
 closeup <- fullData %>% filter(RANK.REL<=0.33, LISTPASSED > 0)
@@ -127,13 +155,18 @@ g5 <- ggplot(closeup)+
  # geom_smooth(aes(x=RANK,y=N.REL),col="red")+
   theme(legend.position="none")+
   geom_hline(yintercept = c(0.1,0.5),col="black")+
-  ggtitle("Listasta l�pi < 10% (sin) tai 10-20% (pun)")
+  ggtitle("Listasta l?pi < 10% (sin) tai 10-20% (pun)")
 
 
 plot(g5)
 ```
 
+#Varsinais-Suomen jakaumat
 
+
+Piirretään Varsinais-Suomen ehdokkaiden äänimäärät kaksissa vaaleissa, ja verrataan sen vuoden äänikynnykseen (pienimpään listan kokonaisänimäärään jolla ehdokas saatiin läpi). 
+
+Huomataan, että vain yhdessä tapauksessa (VAS 2015) kärkiehdokas on yksinään päässyt yli äänikynnyksen. Erityisesti KOK ja PS ovat kuitenkin saaneet kärkiehdokkaita, jotka ovat päässeet yksinään hyvin lähelle äänikynnystä. Toisessa ääripäässä Erityisesti SDP ja VIHR ovat puolueita, joissa kärkiehdokas on tyypillisesti jäänyt kauas kynnyksestä, ja läpimenoon on vaaditty paljon muitakin listan ehdokkaita.
 
 ```{r}
 Vsuomi <- filter(fullData,PROVINCE=="VAR" & LISTPASSED > 0)
